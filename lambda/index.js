@@ -10,6 +10,7 @@ const bucket = process.env.archiveBucket;
 const elasticsearchEndpoint = process.env.elasticsearchEndpoint;
 const region = process.env.region;
 const index = process.env.indexName;
+const senderEmail = process.env.senderEmail;
 const defaultWidth = 1000;
 const maxWidthAllowed = 10001;
 
@@ -238,7 +239,7 @@ async function sendEmail(email, downloadKey, referer) {
       },
       Subject: { Data: `Your download from ${referer} is ready` },
     },
-    Source: "repository@northwestern.edu",
+    Source: senderEmail,
   };
 
   try {

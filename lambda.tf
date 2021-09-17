@@ -41,43 +41,44 @@ resource "aws_iam_role_policy_attachment" "elasticsearch_access" {
 locals {
   dest_path   = "${path.module}/_build"
   source_path = "${path.module}/lambda"
+  source_sha  = sha1(join("", [for f in fileset(path.module, "lambda/{index.js,package.json,package-lock.json}") : sha1(file(f))]))
 }
 
-data "archive_file" "source" {
-  type        = "zip"
-  source_dir  = "${local.source_path}/${var.name}"
-  excludes    = ["node_modules"]
-  output_path = "${local.dest_path}/${var.name}.src.zip"
-}
+resource "null_resource" "node_modules" {
+  triggers = {
+    source = local.source_sha
+  }
 
-data "external" "this_zip" {
-  program = ["${path.module}/build_lambda.sh"]
-  query = {
-    name        = var.name
-    source_sha  = data.archive_file.source.output_sha
-    source_path = local.source_path
-    dest_path   = local.dest_path
+  provisioner "local-exec" {
+    command     = "npm install --no-bin-links"
+    working_dir = local.source_path
   }
 }
 
+data "archive_file" "work_archiver" {
+  depends_on  = [null_resource.node_modules]
+  type        = "zip"
+  source_dir  = local.source_path
+  output_path = "${local.dest_path}/${local.source_sha}.zip"
+}
 
 resource "aws_lambda_function" "work_archiver" {
   function_name = var.name
-  filename      = data.external.this_zip.result.zip
+  filename      = data.archive_file.work_archiver.output_path
   description   = "Creates a .zip archive on S3 of file set assets associated with a work ID. Returns expiring download link via email."
   handler       = "index.handler"
   memory_size   = 4096
   runtime       = "nodejs14.x"
   timeout       = 600
-  role          = aws.iam_role.lambda_role
+  role          = aws_iam_role.lambda_role.arn
   tags          = var.tags
 
 
   environment {
     variables = {
       elasticsearchEndpoint = var.elasticsearch_endpoint,
-      bucket                = aws_s3_bucket.work_archiver_bucket.name,
-      region                = var.region,
+      bucket                = aws_s3_bucket.work_archiver_bucket.id,
+      region                = var.aws_region,
       index                 = var.index,
       senderEmail           = var.sender_email
     }

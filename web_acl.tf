@@ -9,7 +9,6 @@ resource "aws_wafv2_regex_pattern_set" "work_archiver" {
 
 }
 
-
 resource "aws_wafv2_web_acl" "work_archiver" {
   name        = "work-archiver-referers-web-acl"
   description = "Only allow requests from Meadow, DC or devbox."
@@ -56,4 +55,9 @@ resource "aws_wafv2_web_acl" "work_archiver" {
     metric_name                = "${var.stack_name}-web-acl-metric"
     sampled_requests_enabled   = true
   }
+}
+
+resource "aws_wafv2_web_acl_association" "work_archiver" {
+  resource_arn = aws_api_gateway_stage.work_archiver.arn
+  web_acl_arn  = aws_wafv2_web_acl.work_archiver.arn
 }

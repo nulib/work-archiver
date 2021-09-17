@@ -104,6 +104,8 @@ async function imageUrls(workId) {
 
   let doc = JSON.parse(response);
 
+  console.log("response: ", response);
+
   const urls = [];
   doc.hits.hits.map((hit) => {
     if (

@@ -77,10 +77,17 @@ resource "aws_lambda_function" "work_archiver" {
   environment {
     variables = {
       elasticsearchEndpoint = var.elasticsearch_endpoint,
-      bucket                = aws_s3_bucket.work_archiver_bucket.id,
+      archiveBucket         = aws_s3_bucket.work_archiver_bucket.id,
       region                = var.aws_region,
-      index                 = var.index,
+      indexName             = var.index,
       senderEmail           = var.sender_email
     }
   }
 }
+
+resource "aws_lambda_function_event_invoke_config" "work_archiver" {
+  function_name                = aws_lambda_function.work_archiver.function_name
+  maximum_event_age_in_seconds = 360
+  maximum_retry_attempts       = 0
+}
+

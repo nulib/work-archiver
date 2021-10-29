@@ -29,6 +29,9 @@ paths:
           description: "200 response"
           schema:
             $ref: "#/definitions/Empty"
+          headers:
+            Access-Control-Allow-Origin:
+              type: "string"
       x-amazon-apigateway-request-validator:
         "Validate query string parameters and\
         \ headers"
@@ -39,6 +42,8 @@ paths:
         responses:
           default:
             statusCode: "200"
+            responseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
         requestParameters:
           integration.request.header.X-Amz-Invocation-Type: "'Event'"
         requestTemplates:
@@ -70,6 +75,35 @@ paths:
             \n    }\n}\n"
         passthroughBehavior: "when_no_templates"
         contentHandling: "CONVERT_TO_TEXT"
+  options:
+    consumes:
+      - "application/json"
+    produces:
+      - "application/json"
+    responses:
+      "200":
+        description: "200 response"
+        schema:
+          $ref: "#/definitions/Empty"
+        headers:
+          Access-Control-Allow-Origin:
+            type: "string"
+          Access-Control-Allow-Methods:
+            type: "string"
+          Access-Control-Allow-Headers:
+            type: "string"
+    x-amazon-apigateway-integration:
+      responses:
+        default:
+          statusCode: "200"
+          responseParameters:
+            method.response.header.Access-Control-Allow-Methods: "'OPTIONS,POST'"
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+      requestTemplates:
+        application/json: '{"statusCode": 200}'
+      passthroughBehavior: "when_no_match"
+      type: "mock"
 definitions:
   Empty:
     type: "object"

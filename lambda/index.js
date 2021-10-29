@@ -130,7 +130,7 @@ exports.handler = async (event, _context, callback) => {
   const width = event.params.querystring.width
     ? event.params.querystring.width
     : defaultWidth;
-  const referer = event.params.header.Referer;
+  const referer = event.params.header.Referer || event.params.header.referer;
 
   console.log(`Creating zip for workId: ${workId}`);
   console.log(`email: ${email}`);

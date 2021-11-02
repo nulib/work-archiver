@@ -219,7 +219,7 @@ function downloadLink(key) {
   const downloadLink = s3.getSignedUrl("getObject", {
     Bucket: bucket,
     Key: key,
-    Expires: 60 * 10,
+    Expires: 82800,
   });
   return downloadLink;
 }

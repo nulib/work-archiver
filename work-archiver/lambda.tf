@@ -38,33 +38,10 @@ resource "aws_iam_role_policy_attachment" "elasticsearch_access" {
   policy_arn = "arn:aws:iam::${data.aws_caller_identity.current.id}:policy/stack-${var.environment}-elasticsearch-access"
 }
 
-locals {
-  dest_path   = "${path.module}/_build"
-  source_path = "${path.module}/lambda"
-  source_sha  = sha1(join("", [for f in fileset(path.module, "lambda/{index.js,package.json,package-lock.json}") : sha1(file(f))]))
-}
+module "lambda_function" {
+  source = "terraform-aws-modules/lambda/aws"
 
-resource "null_resource" "node_modules" {
-  triggers = {
-    source = local.source_sha
-  }
-
-  provisioner "local-exec" {
-    command     = "npm install --no-bin-links"
-    working_dir = local.source_path
-  }
-}
-
-data "archive_file" "work_archiver" {
-  depends_on  = [null_resource.node_modules]
-  type        = "zip"
-  source_dir  = local.source_path
-  output_path = "${local.dest_path}/${local.source_sha}.zip"
-}
-
-resource "aws_lambda_function" "work_archiver" {
   function_name = var.name
-  filename      = data.archive_file.work_archiver.output_path
   description   = "Creates a .zip archive on S3 of file set assets associated with a work ID. Returns expiring download link via email."
   handler       = "index.handler"
   memory_size   = 4096
@@ -73,20 +50,24 @@ resource "aws_lambda_function" "work_archiver" {
   role          = aws_iam_role.lambda_role.arn
   tags          = var.tags
 
-
-  environment {
-    variables = {
-      elasticsearchEndpoint = var.elasticsearch_endpoint,
-      archiveBucket         = aws_s3_bucket.work_archiver_bucket.id,
-      region                = var.aws_region,
-      indexName             = var.index,
-      senderEmail           = var.sender_email
+  source_path = [
+    {
+      path = "${path.module}/lambda"
+      commands = ["npm install --only prod --no-bin-links --no-fund", ":zip"]
     }
+  ]
+
+  environment_variables = {
+    elasticsearchEndpoint = var.elasticsearch_endpoint,
+    archiveBucket         = aws_s3_bucket.work_archiver_bucket.id,
+    region                = var.aws_region,
+    indexName             = var.index,
+    senderEmail           = var.sender_email
   }
 }
 
 resource "aws_lambda_function_event_invoke_config" "work_archiver" {
-  function_name                = aws_lambda_function.work_archiver.function_name
+  function_name                = module.lambda_function.lambda_function_name
   maximum_event_age_in_seconds = 360
   maximum_retry_attempts       = 0
 }

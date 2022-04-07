@@ -38,7 +38,7 @@ paths:
       x-amazon-apigateway-integration:
         type: "aws"
         httpMethod: "POST"
-        uri: "arn:aws:apigateway:${aws_region}:lambda:path/2015-03-31/functions/${lambda_arn}/invocations"
+        uri: "${lambda_invocation_arn}"
         responses:
           default:
             statusCode: "200"

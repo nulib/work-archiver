@@ -1,11 +1,12 @@
-resource "aws_api_gateway_rest_api" "work_archiver" {
-  body = templatefile(
-    "${path.module}/api_gateway_definition.yml",
-    {
-      aws_region = var.aws_region,
-      lambda_arn = aws_lambda_function.work_archiver.arn
-  })
+data "template_file" "api_gateway_definition" {
+  filename = "${path.module}/api_gateway_definition.yml"
+  vars = {
+    lambda_invocation_arn = module.lambda_function.lambda_function_invoke_arn
+  }
+}
 
+resource "aws_api_gateway_rest_api" "work_archiver" {
+  body = data.template_file.api_gateway_definition.rendered
   name = "stack-${var.environment}-work-archiver"
 
   endpoint_configuration {

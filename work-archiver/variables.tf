@@ -7,6 +7,14 @@ variable "elasticsearch_endpoint" {
   type = string
 }
 
+variable "email_access_policy_arn" {
+  type = string
+}
+
+variable "elasticsearch_access_policy_arn" {
+  type = string
+}
+
 variable "environment" {
   type = string
 }

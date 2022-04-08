@@ -13,6 +13,10 @@ resource "aws_iam_role_policy_attachment" "elasticsearch_access" {
   policy_arn = var.elasticsearch_access_policy_arn
 }
 
+resource "aws_ses_email_identity" "sender_email" {
+  email = var.sender_email
+}
+
 module "lambda_function" {
   source = "terraform-aws-modules/lambda/aws"
 
@@ -26,7 +30,7 @@ module "lambda_function" {
 
   source_path = [
     {
-      path = "${path.module}/lambda"
+      path     = "${path.module}/lambda"
       commands = ["npm install --only prod --no-bin-links --no-fund", ":zip"]
     }
   ]

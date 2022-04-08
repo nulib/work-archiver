@@ -125,12 +125,12 @@ async function imageUrls(workId) {
 exports.handler = async (event, _context, callback) => {
   console.log("event: ", event);
 
-  const workId = event.params.querystring.workId;
-  const email = event.params.querystring.email;
-  const width = event.params.querystring.width
-    ? event.params.querystring.width
+  const workId = event.queryStringParameters.workId;
+  const email = event.queryStringParameters.email;
+  const width = event.queryStringParameters.width
+    ? event.queryStringParameters.width
     : defaultWidth;
-  const referer = event.params.header.Referer || event.params.header.referer;
+  const referer = event.headers.Referer || event.headers.referer;
 
   console.log(`Creating zip for workId: ${workId}`);
   console.log(`email: ${email}`);

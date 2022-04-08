@@ -1,10 +1,20 @@
 resource "aws_s3_bucket" "work_archiver_bucket" {
   bucket = "${var.stack_name}-${var.environment}-archives"
-  acl    = "private"
   tags   = var.tags
+}
 
-  lifecycle_rule {
-    enabled = true
+resource "aws_s3_bucket_acl" "work_archiver_bucket_acl" {
+  bucket = aws_s3_bucket.work_archiver_bucket.id
+  acl    = "private"
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "work_archiver_bucket_lifecycle" {
+  bucket = aws_s3_bucket.work_archiver_bucket.id
+
+  rule {
+    id        = "expiration"
+    status    = "Enabled"
+
     expiration {
       days = 1
     }

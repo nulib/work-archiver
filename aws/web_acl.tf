@@ -58,6 +58,6 @@ resource "aws_wafv2_web_acl" "work_archiver" {
 }
 
 resource "aws_wafv2_web_acl_association" "work_archiver" {
-  resource_arn = aws_apigatewayv2_stage.work_archiver.arn
+  resource_arn = "placeholder_stage_arn"
   web_acl_arn  = aws_wafv2_web_acl.work_archiver.arn
 }

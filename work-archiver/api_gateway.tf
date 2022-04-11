@@ -23,23 +23,10 @@ resource "aws_apigatewayv2_deployment" "work_archiver" {
   }
 }
 
-resource "aws_cloudwatch_log_group" "work-archiver" {
-  name = "work-archiver"
-}
-
 resource "aws_apigatewayv2_stage" "work_archiver" {
   deployment_id = aws_apigatewayv2_deployment.work_archiver.id
   api_id        = aws_apigatewayv2_api.work_archiver.id
   name          = "latest"
-  access_log_settings {
-    format          = "$context.identity.sourceIp $context.identity.caller $context.identity.user [$context.requestTime] $context.httpMethod $context.resourcePath $context.protocol $context.status $context.responseLength $context.requestId $context.extendedRequestId"
-    destination_arn = aws_cloudwatch_log_group.work-archiver.arn
-  }
-
-  route_settings {
-    route_key     = "POST /archiver"
-    logging_level = "INFO"
-  }
 }
 
 resource "aws_lambda_permission" "allow_api_gateway_invocation" {

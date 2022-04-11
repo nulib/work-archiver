@@ -254,6 +254,18 @@ async function sendEmail(email, downloadKey, referer) {
 }
 
 exports.handler = async (event, context, callback) => {
+  const referer = event.headers.Referer || event.headers.referer;
+  const allowed = new RegExp(process.env.allowedReferers);
+  if (!allowed.test(referer)) {
+    return {
+      statusCode: 403,
+      body: "Forbidden",
+      headers: {
+        "Content-Type": "text/plain"
+      }
+    }
+  }
+  
   if (event.async) {
     console.log("Processing asynchronous request.");
     return processEvent(event, callback);
@@ -262,10 +274,17 @@ exports.handler = async (event, context, callback) => {
     event.async = true;
     console.log(JSON.stringify(event));
     const lambda = new AWS.Lambda();
-    return await lambda.invoke({ 
+    await lambda.invoke({ 
       FunctionName: context.functionName, 
       InvocationType: "Event", 
       Payload: JSON.stringify(event)
     }).promise();
+    return {
+      statusCode: 200,
+      body: "OK",
+      headers: {
+        "Content-Type": "text/plain"
+      }
+    }
   }
 }

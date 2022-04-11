@@ -1,6 +1,7 @@
 module "work-archiver" {
   source    = "../work-archiver"
 
+  allowed_referers                  = var.allowed_referers
   aws_region                        = var.aws_region
   elasticsearch_endpoint            = var.elasticsearch_endpoint
   email_access_policy_arn           = var.email_access_policy_arn

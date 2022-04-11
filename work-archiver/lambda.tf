@@ -1,3 +1,21 @@
+data "aws_iam_policy_document" "lambda_self_invocation" {
+  statement {
+    effect     = "Allow"
+    actions    = ["lambda:InvokeFunction"]
+    resources  = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "lambda_self_invocation" {
+  name = "${var.name}-lambda-self-invocation"
+  policy = data.aws_iam_policy_document.lambda_self_invocation.json
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_self_invocation" {
+  role       = module.lambda_function.lambda_role_name
+  policy_arn = aws_iam_policy.lambda_self_invocation.arn
+}
+
 resource "aws_iam_role_policy_attachment" "lambda_bucket_access" {
   role       = module.lambda_function.lambda_role_name
   policy_arn = aws_iam_policy.work_archiver_bucket_policy.arn
@@ -36,6 +54,7 @@ module "lambda_function" {
   ]
 
   environment_variables = {
+    allowedReferers       = var.allowed_referers,
     elasticsearchEndpoint = var.elasticsearch_endpoint,
     archiveBucket         = aws_s3_bucket.work_archiver_bucket.id,
     region                = var.aws_region,

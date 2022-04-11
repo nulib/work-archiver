@@ -53,3 +53,8 @@ resource "aws_lambda_permission" "allow_api_gateway_invocation" {
   }
 }
 
+resource "aws_ssm_parameter" "work_archiver" {
+  name    = "/work-archiver/endpoint"
+  value   = "https://${aws_apigatewayv2_api.work_archiver.api_endpoint}/${aws_apigatewayv2_stage.work_archiver.name}"
+  type    = "String"
+}

@@ -122,7 +122,7 @@ async function imageUrls(workId) {
   return urls;
 }
 
-exports.handler = async (event, _context, callback) => {
+async function processEvent(event, callback) {
   console.log("event: ", event);
 
   const workId = event.queryStringParameters.workId;
@@ -251,4 +251,21 @@ async function sendEmail(email, downloadKey, referer) {
     console.error("Email could not be sent: ", e);
   }
   return;
+}
+
+exports.handler = async (event, context, callback) => {
+  if (event.async) {
+    console.log("Processing asynchronous request.");
+    return processEvent(event, callback);
+  } else {
+    console.log("Synchronous request received. Re-invoking asynchronously.");
+    event.async = true;
+    console.log(JSON.stringify(event));
+    const lambda = new AWS.Lambda();
+    return await lambda.invoke({ 
+      FunctionName: context.functionName, 
+      InvocationType: "Event", 
+      Payload: JSON.stringify(event)
+    }).promise();
+  }
 }

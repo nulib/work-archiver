@@ -58,6 +58,6 @@ resource "aws_wafv2_web_acl" "work_archiver" {
 }
 
 resource "aws_wafv2_web_acl_association" "work_archiver" {
-  resource_arn = "placeholder_stage_arn"
+  resource_arn = module.work-archiver.work_archiver_api_gateway_stage_arn
   web_acl_arn  = aws_wafv2_web_acl.work_archiver.arn
 }

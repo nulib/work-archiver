@@ -4,7 +4,8 @@ resource "aws_api_gateway_rest_api" "work_archiver" {
     {
       aws_region = var.aws_region,
       lambda_arn = aws_lambda_function.work_archiver.arn
-  })
+    }
+  )
 
   name = "stack-${var.environment}-work-archiver"
 

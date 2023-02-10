@@ -5,7 +5,6 @@ resource "aws_wafv2_regex_pattern_set" "work_archiver" {
   regular_expression {
     regex_string = "(devbox|digitalcollections|meadow|dc)\\.(rdc(-staging)?\\.)?library\\.northwestern\\.edu(:3001)?"
   }
-  tags = var.tags
 
 }
 
@@ -47,8 +46,6 @@ resource "aws_wafv2_web_acl" "work_archiver" {
       sampled_requests_enabled   = true
     }
   }
-
-  tags = var.tags
 
   visibility_config {
     cloudwatch_metrics_enabled = true

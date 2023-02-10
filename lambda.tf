@@ -14,7 +14,6 @@ data "aws_iam_policy_document" "lambda_assume_role" {
 resource "aws_iam_role" "lambda_role" {
   name               = "${var.stack_name}-lambda-role"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
-  tags               = var.tags
 }
 
 
@@ -71,7 +70,6 @@ resource "aws_lambda_function" "work_archiver" {
   runtime       = "nodejs14.x"
   timeout       = 600
   role          = aws_iam_role.lambda_role.arn
-  tags          = var.tags
 
 
   environment {

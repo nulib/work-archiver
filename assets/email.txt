@@ -1,0 +1,4 @@
+Hello,
+A zipped archive of {{title}} with accession: {{accession}} has been created. Your download will be available for 24 hours.
+
+The zip file can be downloaded from {{downloadKey}}

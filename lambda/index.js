@@ -1,7 +1,5 @@
 const _archiver = require("archiver");
 const AWS = require("aws-sdk");
-const axios = require("axios");
-const elasticsearch = require("elasticsearch");
 const path = require("path");
 const request = require("request");
 const uuid = require("node-uuid");
@@ -13,6 +11,12 @@ const index = process.env.indexName;
 const senderEmail = process.env.senderEmail;
 const defaultWidth = 1000;
 const maxWidthAllowed = 10001;
+const today = new Date().toLocaleDateString("en-us", {
+  weekday: "long",
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
 
 const streamTo = (key) => {
   const stream = require("stream");
@@ -43,25 +47,10 @@ async function makeRequest(workId) {
     const endpoint = new AWS.Endpoint(elasticsearchEndpoint);
     const request = new AWS.HttpRequest(endpoint, region);
 
-    const document = {
-      _source: ["accessionNumber", "representativeImageUrl"],
-      size: 2000,
-      query: {
-        bool: {
-          must: [
-            { match: { "model.name.keyword": "FileSet" } },
-            { match: { "workId.keyword": workId } },
-          ],
-        },
-      },
-    };
-
-    request.method = "POST";
-    request.path += index + "/_search";
-    request.body = JSON.stringify(document);
+    request.method = "GET";
+    request.path += `${index}/_doc/${workId}?_source=title,accession_number,file_sets`;
     request.headers["host"] = elasticsearchEndpoint;
     request.headers["Content-Type"] = "application/json";
-    request.headers["Content-Length"] = Buffer.byteLength(request.body);
 
     let chain = new AWS.CredentialProviderChain();
     chain.resolve((err, credentials) => {
@@ -98,26 +87,25 @@ async function awsFetch(request) {
   });
 }
 
-async function imageUrls(workId) {
-  let request = await makeRequest(workId);
-  let response = await awsFetch(request);
-
-  let doc = JSON.parse(response);
-
+async function getWork(workId) {
+  const request = await makeRequest(workId);
+  console.log("request: ", request);
+  const response = await awsFetch(request);
   console.log("response: ", response);
+  const work = JSON.parse(response)?._source;
+  console.log("work: ", work);
+  return work;
+}
 
-  const urls = [];
-  doc.hits.hits.map((hit) => {
-    if (
-      hit._source.representativeImageUrl != null &&
-      hit._source.accessionNumber != null
-    ) {
-      urls.push({
-        label: hit._source.accessionNumber,
-        url: hit._source.representativeImageUrl,
-      });
-    }
-  });
+async function imageUrls(fileSets) {
+  const urls = fileSets
+    .filter((fs) => fs.representative_image_url != null && fs.accession_number != null)
+    .map((fs) => ({
+      label: fs.accession_number,
+      url: fs.representative_image_url,
+    }));
+
+  console.log("imageUrls: ", urls);
 
   return urls;
 }
@@ -156,8 +144,8 @@ exports.handler = async (event, _context, callback) => {
   }
 
   const key = path.join("temp", `${uuid.v4()}.zip`);
-  const images = await imageUrls(workId);
-  console.log("images: ", images);
+  const work = await getWork(workId);
+  const images = await imageUrls(work.file_sets);
 
   if (images.length > 0) {
     await new Promise((_resolve, reject) => {
@@ -178,8 +166,18 @@ exports.handler = async (event, _context, callback) => {
       uploadStream.on("end", function () {
         console.log("Data has been drained");
         const downloadKey = downloadLink(key);
-        console.log("downloadKey: ", downloadKey);
-        sendEmail(email, downloadKey, referer);
+
+        const params = {
+          email,
+          downloadKey,
+          referer,
+          workId,
+          today,
+          title: work?.title || "[Untitled]",
+          accession: work?.accession_number,
+        };
+        console.log("params: ", params);
+        sendEmail(params);
         callback(null, {
           statusCode: 200,
           body: JSON.stringify({ final_destination: downloadKey }),
@@ -224,28 +222,22 @@ function downloadLink(key) {
   return downloadLink;
 }
 
-async function sendEmail(email, downloadKey, referer) {
+async function sendEmail(options) {
   const ses = new AWS.SES({ region: region });
 
   const emailParams = {
+    Source: `Northwestern University Libraries <${senderEmail}>`,
+    Template: process.env.template,
     Destination: {
-      ToAddresses: [email],
+      ToAddresses: [options.email],
     },
-    Message: {
-      Body: {
-        Html: {
-          Charset: "UTF-8",
-          Data: `<a href=\"${downloadKey}\">Click here</a> for your download.`,
-        },
-        Text: { Data: `Click here for your download: \n\n ${downloadKey}` },
-      },
-      Subject: { Data: `Your download from ${referer} is ready` },
-    },
-    Source: senderEmail,
+    TemplateData: JSON.stringify(options),
   };
 
+  console.log("sendTemplatedEmail params: ", emailParams);
+
   try {
-    let key = await ses.sendEmail(emailParams).promise();
+    let key = await ses.sendTemplatedEmail(emailParams).promise();
     console.log("Email sent: ", key);
   } catch (e) {
     console.error("Email could not be sent: ", e);

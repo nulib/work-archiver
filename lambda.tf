@@ -79,6 +79,7 @@ resource "aws_lambda_function" "work_archiver" {
       region                = var.aws_region,
       indexName             = var.index,
       senderEmail           = var.sender_email
+      template              = aws_ses_template.work_archiver_template.name
     }
   }
 }

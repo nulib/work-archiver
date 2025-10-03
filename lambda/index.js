@@ -1,13 +1,14 @@
 const _archiver = require("archiver");
-const AWS = require("aws-sdk");
+const { S3Client } = require("@aws-sdk/client-s3");
+const { SESClient, SendTemplatedEmailCommand } = require("@aws-sdk/client-ses");
+const { Upload } = require("@aws-sdk/lib-storage");
+const { getWork } = require("./get-work");
 const path = require("path");
 const request = require("request");
 const uuid = require("node-uuid");
 
 const bucket = process.env.archiveBucket;
-const elasticsearchEndpoint = process.env.elasticsearchEndpoint;
 const region = process.env.region;
-const index = process.env.indexName;
 const senderEmail = process.env.senderEmail;
 const defaultWidth = 1000;
 const maxWidthAllowed = 10001;
@@ -18,84 +19,42 @@ const today = new Date().toLocaleDateString("en-us", {
   day: "numeric",
 });
 
+const getUrl = (key) => {
+  return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+}
+
 const streamTo = (key) => {
   const stream = require("stream");
   const pass = new stream.PassThrough();
-  const s3 = new AWS.S3();
-  s3.upload({
-    Bucket: bucket,
-    Key: key,
-    Body: pass,
-    ContentType: "application/zip",
-  })
+  const client = new S3Client({ region });
+  const upload = new Upload({
+    client: client,
+    params: {
+      Bucket: bucket,
+      Key: key,
+      Body: pass,
+      ContentType: "application/zip",
+      ACL: "public-read",
+    },
+  });
+
+  upload
     .on("httpUploadProgress", (progress) => {
       console.log("progress", progress);
     })
-    .send((err, data) => {
-      if (err) {
-        pass.destroy(err);
-      } else {
-        console.log(`File written to:  ${data.Location}`);
-        pass.destroy();
-      }
+    .done()
+    .then((data) => {
+      console.log(`File written to:  ${getUrl(key)}`);
+    })
+    .catch((err) => {
+      console.error("Error", err);
+    })
+    .finally(() => {
+      pass.destroy();
     });
+
   return pass;
 };
-
-async function makeRequest(workId) {
-  return new Promise((resolve, _reject) => {
-    const endpoint = new AWS.Endpoint(elasticsearchEndpoint);
-    const request = new AWS.HttpRequest(endpoint, region);
-
-    request.method = "GET";
-    request.path += `${index}/_doc/${workId}?_source=title,accession_number,file_sets`;
-    request.headers["host"] = elasticsearchEndpoint;
-    request.headers["Content-Type"] = "application/json";
-
-    let chain = new AWS.CredentialProviderChain();
-    chain.resolve((err, credentials) => {
-      if (err) {
-        console.error("Returning unsigned request: ", err);
-      } else {
-        var signer = new AWS.Signers.V4(request, "es");
-        signer.addAuthorization(credentials, new Date());
-      }
-      resolve(request);
-    });
-  });
-}
-
-async function awsFetch(request) {
-  return new Promise((resolve, reject) => {
-    var client = new AWS.HttpClient();
-    client.handleRequest(
-      request,
-      null,
-      function (response) {
-        let responseBody = "";
-        response.on("data", function (chunk) {
-          responseBody += chunk;
-        });
-        response.on("end", function (chunk) {
-          resolve(responseBody);
-        });
-      },
-      function (error) {
-        console.error("Error: " + error);
-      }
-    );
-  });
-}
-
-async function getWork(workId) {
-  const request = await makeRequest(workId);
-  console.log("request: ", request);
-  const response = await awsFetch(request);
-  console.log("response: ", response);
-  const work = JSON.parse(response)?._source;
-  console.log("work: ", work);
-  return work;
-}
 
 async function imageUrls(fileSets) {
   const urls = fileSets
@@ -105,13 +64,10 @@ async function imageUrls(fileSets) {
       url: fs.representative_image_url,
     }));
 
-  console.log("imageUrls: ", urls);
-
   return urls;
 }
 
 exports.handler = async (event, _context, callback) => {
-  console.log("event: ", event);
 
   const workId = event.params.querystring.workId;
   const email = event.params.querystring.email;
@@ -123,7 +79,7 @@ exports.handler = async (event, _context, callback) => {
   console.log(`Creating zip for workId: ${workId}`);
   console.log(`email: ${email}`);
   console.log(`width: ${width}`);
-  console.log("referer: ", referer);
+  console.log(`referer: ${referer}`);
 
   if (workId == null || email == null || !email.endsWith("@northwestern.edu")) {
     const message =
@@ -176,7 +132,7 @@ exports.handler = async (event, _context, callback) => {
           title: work?.title || "[Untitled]",
           accession: work?.accession_number,
         };
-        console.log("params: ", params);
+
         sendEmail(params);
         callback(null, {
           statusCode: 200,
@@ -213,31 +169,21 @@ exports.handler = async (event, _context, callback) => {
 };
 
 function downloadLink(key) {
-  const s3 = new AWS.S3();
-  const downloadLink = s3.getSignedUrl("getObject", {
-    Bucket: bucket,
-    Key: key,
-    Expires: 82800,
-  });
-  return downloadLink;
+  return getUrl(key);
 }
 
 async function sendEmail(options) {
-  const ses = new AWS.SES({ region: region });
-
-  const emailParams = {
+  const ses = new SESClient({ region });
+  const command = new SendTemplatedEmailCommand({
     Source: `Northwestern University Libraries <${senderEmail}>`,
     Template: process.env.template,
     Destination: {
-      ToAddresses: [options.email],
+      ToAddresses: [options.email]
     },
-    TemplateData: JSON.stringify(options),
-  };
-
-  console.log("sendTemplatedEmail params: ", emailParams);
-
+    TemplateData: JSON.stringify(options)
+  });
   try {
-    let key = await ses.sendTemplatedEmail(emailParams).promise();
+    let key = await ses.send(command);
     console.log("Email sent: ", key);
   } catch (e) {
     console.error("Email could not be sent: ", e);

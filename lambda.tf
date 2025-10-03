@@ -40,7 +40,7 @@ resource "aws_iam_role_policy_attachment" "elasticsearch_access" {
 locals {
   dest_path   = "${path.module}/_build"
   source_path = "${path.module}/lambda"
-  source_sha  = sha1(join("", [for f in fileset(path.module, "lambda/{index.js,package.json,package-lock.json}") : sha1(file(f))]))
+  source_sha  = sha1(join("", [for f in fileset(path.module, "lambda/{get-work.js,index.js,package.json,package-lock.json}") : sha1(file(f))]))
 }
 
 resource "null_resource" "node_modules" {
@@ -67,7 +67,7 @@ resource "aws_lambda_function" "work_archiver" {
   description   = "Creates a .zip archive on S3 of file set assets associated with a work ID. Returns expiring download link via email."
   handler       = "index.handler"
   memory_size   = 4096
-  runtime       = "nodejs14.x"
+  runtime       = "nodejs22.x"
   timeout       = 600
   role          = aws_iam_role.lambda_role.arn
 

@@ -6,8 +6,15 @@
   "author": "kdid",
   "license": "Apache2",
   "dependencies": {
+    "@aws-crypto/sha256-js": "^5.2.0",
+    "@aws-sdk/client-s3": "^3.901.0",
+    "@aws-sdk/client-ses": "^3.901.0",
+    "@aws-sdk/credential-provider-node": "^3.901.0",
+    "@aws-sdk/lib-storage": "^3.901.0",
+    "@smithy/node-http-handler": "^4.3.0",
+    "@smithy/protocol-http": "^5.3.0",
+    "@smithy/signature-v4": "^5.3.0",
     "archiver": "^3.1.1",
-    "aws-sdk": "^2.636.0",
     "node-uuid": "^1.4.8",
     "request": "^2.88.2"
   }

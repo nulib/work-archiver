@@ -34,6 +34,7 @@ const streamTo = (key) => {
       Key: key,
       Body: pass,
       ContentType: "application/zip",
+      ContentDisposition: `attachment; filename="${path.basename(key)}"`,
       ACL: "public-read",
     },
   });

@@ -11,10 +11,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "work_archiver_bucket" {
   bucket = aws_s3_bucket.work_archiver_bucket.bucket
 
   rule {
-    id        = "one-day-expiration"
+    id        = "three-day-expiration"
     status    = "Enabled"
     expiration {
-      days = 1
+      days = 3
     }
   }
 }
